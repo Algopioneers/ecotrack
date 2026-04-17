@@ -1,0 +1,363 @@
+// EcoTrack Waste Management Platform - SQLite Development Schema
+// For production, migrate to PostgreSQL with full enum support
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - stores all user types (user, collector, admin)
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  name          String
+  phone         String?
+  address       String?
+  role          String   @default("USER") // USER, COLLECTOR, ADMIN
+  isActive      Boolean  @default(true)
+  emailVerified Boolean  @default(false)
+  referralCode  String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  userPickups      PickupRequest[] @relation("RequestUser")
+  collectorPickups PickupRequest[] @relation("CollectorUser")
+  payments         Payment[]
+  notifications    Notification[]
+  wallet           Wallet?
+  rewardPoints     RewardPoint[]
+  referralsMade    Referral[]  @relation("Referrer")
+  referralUsed    Referral?   @relation("Referred")
+  redemptions     RewardRedemption[]
+  conversations   ChatConversation[]
+  userFeedback    Feedback[]  @relation("FeedbackUser")
+  collectorFeedback Feedback[] @relation("FeedbackCollector")
+  earnings        Earnings[]
+  
+  @@index([email])
+  @@index([role])
+  @@index([referralCode])
+}
+
+model Wallet {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  balance   Float    @default(0.0)
+  currency  String   @default("NGN")
+  user      User     @relation(fields: [userId], references: [id])
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
+}
+
+model PickupRequest {
+  id              String   @id @default(uuid())
+  userId          String
+  collectorId     String?
+  wasteType       String   // ORGANIC, PLASTIC, PAPER, METAL, GLASS, ELECTRONIC, TEXTILE, HAZARDOUS, MIXED, BULKY
+  weightKg        Float
+  address         String
+  latitude        Float
+  longitude       Float
+  scheduledFor    DateTime
+  status          String   @default("PENDING") // PENDING, ASSIGNED, COLLECTED, COMPLETED, CANCELLED, FAILED
+  estimatedPrice  Float
+  actualPrice     Float?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  user      User      @relation("RequestUser", fields: [userId], references: [id])
+  collector User?     @relation("CollectorUser", fields: [collectorId], references: [id])
+  payments  Payment[]
+  
+  @@index([userId])
+  @@index([collectorId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+model Payment {
+  id            String   @id @default(uuid())
+  userId        String
+  pickupId      String?
+  amount        Float
+  currency      String   @default("NGN")
+  status        String   // PENDING, PROCESSING, COMPLETED, FAILED, REFUNDED, CANCELLED
+  method        String   // CARD, BANK_TRANSFER, WALLET, USSD
+  transactionId String?
+  gatewayResponse String?
+  createdAt     DateTime @default(now())
+  
+  user    User           @relation(fields: [userId], references: [id])
+  pickup  PickupRequest?  @relation(fields: [pickupId], references: [id])
+  
+  @@index([userId])
+  @@index([status])
+  @@index([method])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  type      String   // PICKUP_ASSIGNED, PICKUP_COMPLETED, PAYMENT_RECEIVED, PAYMENT_FAILED, PROMOTION, SYSTEM_ALERT, REMINDER
+  isRead    Boolean  @default(false)
+  data      String?  // JSON string for additional data
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([isRead])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model Earnings {
+  id          String   @id @default(uuid())
+  userId      String
+  amount      Float
+  currency    String   @default("NGN")
+  source      String   // PICKUP_COMPLETION, BONUS, REFERRAL
+  description String?
+  date        DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([date])
+}
+
+model Feedback {
+  id          String   @id @default(uuid())
+  userId      String
+  collectorId String?
+  rating      Int      // 1-5
+  comment     String?
+  createdAt   DateTime @default(now())
+  
+  user      User   @relation("FeedbackUser", fields: [userId], references: [id])
+  collector User?  @relation("FeedbackCollector", fields: [collectorId], references: [id])
+  
+  @@index([userId])
+  @@index([collectorId])
+  @@index([createdAt])
+}
+
+// ============ REWARDS & REFERRAL SYSTEM ============
+
+model RewardPoint {
+  id          String   @id @default(uuid())
+  userId      String
+  points      Int
+  type        String   // PICKUP_COMPLETE, REFERRAL_BONUS, REFERRAL_SIGNUP, PROMO_BONUS, CASHBACK, REDEMPTION
+  source      String?
+  description String?
+  createdAt   DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Referral {
+  id           String    @id @default(uuid())
+  referrerId   String
+  referredId   String?   @unique
+  referralCode String    @unique
+  status       String    @default("PENDING") // PENDING, COMPLETED, EXPIRED
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
+  
+  referrer User  @relation("Referrer", fields: [referrerId], references: [id])
+  referred User? @relation("Referred", fields: [referredId], references: [id])
+  
+  @@index([referrerId])
+  @@index([referredId])
+  @@index([referralCode])
+}
+
+model RewardTier {
+  id                String   @id @default(uuid())
+  name              String   @unique
+  minPoints         Int
+  maxPoints         Int?
+  cashbackPercent   Float
+  description       String?
+  icon              String?
+  color             String?
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  
+  @@index([minPoints])
+}
+
+model RewardRedemption {
+  id          String   @id @default(uuid())
+  userId      String
+  points      Int
+  rewardType  String   // AIRTIME, DATA, WALLET_CREDIT, DISCOUNT_CODE, GIFT_CARD, UTILITY_BILL
+  rewardValue String?
+  status      String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED, CANCELLED
+  createdAt   DateTime @default(now())
+  processedAt DateTime?
+  
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([status])
+}
+
+// ============ FEATURE MANAGEMENT SYSTEM ============
+
+model LandingPageFeature {
+  id            String    @id @default(uuid())
+  title         String
+  subtitle      String?
+  description   String
+  icon          String?
+  link          String?
+  linkText     String?
+  imageUrl     String?
+  badge        String?
+  badgeColor   String?
+  displayOrder Int       @default(0)
+  targetAudience String @default("ALL") // ALL, USER, BUSINESS, COLLECTOR
+  isActive     Boolean   @default(true)
+  startDate    DateTime?
+  endDate      DateTime?
+  clickCount   Int       @default(0)
+  viewCount    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  @@index([isActive])
+  @@index([displayOrder])
+}
+
+model ChatConversation {
+  id          String   @id @default(uuid())
+  userId      String?
+  sessionId   String   @unique
+  status      String   @default("ACTIVE") // ACTIVE, WAITING, ASSIGNED, RESOLVED, CLOSED
+  isResolved  Boolean  @default(false)
+  rating      Int?
+  feedback    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  messages    ChatMessage[]
+  user        User?     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([sessionId])
+}
+
+model ChatMessage {
+  id              String   @id @default(uuid())
+  conversationId  String
+  sender          String   // USER, BOT, AGENT
+  content         String
+  metadata        String?  // JSON string for additional data
+  isRead          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  
+  conversation ChatConversation @relation(fields: [conversationId], references: [id])
+  
+  @@index([conversationId])
+  @@index([createdAt])
+}
+
+model Analytics {
+  id                  String   @id @default(uuid())
+  date                DateTime @unique @default(now())
+  totalPickups        Int
+  completedPickups    Int
+  revenue             Float
+  avgRating           Float
+  activeUsers         Int
+  activeCollectors    Int
+}
+
+// ============ SITE SETTINGS ============
+
+model SiteSettings {
+  id                String   @id @default("default")
+  siteName          String   @default("EcoTrack")
+  tagline           String   @default("Smart Waste Management")
+  description       String?
+  keywords          String?
+  author            String?
+  ogImage           String?
+  favicon           String?
+  logo              String?
+  logoAlt           String?
+  contactEmail      String?
+  contactPhone      String?
+  contactAddress    String?
+  socialFacebook    String?
+  socialTwitter     String?
+  socialInstagram   String?
+  socialLinkedIn    String?
+  analyticsCode     String?
+  enabled           Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
+
+// ============ CMS PAGES ============
+
+model CMSPage {
+  id            String   @id @default(uuid())
+  slug          String   @unique
+  title         String
+  content       String
+  metaTitle     String?
+  metaDescription String?
+  keywords      String?
+  status        String   @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  pageType      String   @default("CUSTOM") // ABOUT, CONTACT, PRIVACY, TERMS, FAQ, BLOG, CUSTOM
+  authorId      String?
+  featuredImage  String?
+  createdAt    DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  publishedAt   DateTime?
+  
+  @@index([slug])
+  @@index([status])
+  @@index([pageType])
+}
+
+// ============ BLOG POSTS ============
+
+model BlogPost {
+  id            String   @id @default(uuid())
+  slug          String   @unique
+  title         String
+  excerpt       String?
+  content       String
+  coverImage    String?
+  authorId      String?
+  authorName    String?
+  category      String?
+  tags          String?  // JSON array as string
+  status        String   @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  featured      Boolean  @default(false)
+  views         Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  publishedAt   DateTime?
+  
+  @@index([slug])
+  @@index([status])
+  @@index([category])
+}
