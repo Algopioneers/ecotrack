@@ -23,7 +23,7 @@ export default function UserDashboard() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-navy-900">Welcome back, John!</h1>
-          <p className="text-navy-500">Here's your waste management overview</p>
+          <p className="text-navy-500">Here&apos;s your waste management overview</p>
         </div>
         <Link href="/user/pickup/new" className="eco-btn-primary mt-4 md:mt-0 inline-flex items-center space-x-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

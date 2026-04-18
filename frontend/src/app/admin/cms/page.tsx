@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 
 interface CMSPage {
@@ -19,11 +19,7 @@ export default function AdminCMS() {
   const [filter, setFilter] = useState('ALL');
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetchPages();
-  }, [filter]);
-
-  const fetchPages = async () => {
+  const fetchPages = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       let url = 'http://localhost:5000/api/cms';
@@ -36,7 +32,11 @@ export default function AdminCMS() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    fetchPages();
+  }, []);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this page?')) return;

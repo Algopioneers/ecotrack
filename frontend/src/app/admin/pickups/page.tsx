@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface Pickup {
   id: string;
@@ -21,11 +21,7 @@ export default function AdminPickups() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  useEffect(() => {
-    fetchPickups();
-  }, [statusFilter]);
-
-  const fetchPickups = async () => {
+  const fetchPickups = useCallback(async () => {
     const token = localStorage.getItem('token');
     try {
       const url = statusFilter === 'ALL' 
@@ -39,7 +35,11 @@ export default function AdminPickups() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
+
+  useEffect(() => {
+    fetchPickups();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {

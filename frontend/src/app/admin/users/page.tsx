@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 interface User {
   id: string;
@@ -18,11 +18,7 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [roleFilter, setRoleFilter] = useState('ALL');
 
-  useEffect(() => {
-    fetchUsers();
-  }, [roleFilter]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     const token = localStorage.getItem('token');
     try {
       const url = roleFilter === 'ALL' 
@@ -36,7 +32,11 @@ export default function AdminUsers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [roleFilter]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const toggleUserStatus = async (userId: string, isActive: boolean) => {
     const token = localStorage.getItem('token');

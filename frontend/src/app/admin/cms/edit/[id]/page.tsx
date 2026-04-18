@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -35,11 +35,7 @@ export default function EditCMSPage() {
     featuredImage: '',
   });
 
-  useEffect(() => {
-    fetchPage();
-  }, [params.id]);
-
-  const fetchPage = async () => {
+  const fetchPage = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`http://localhost:5000/api/cms/${params.id}`, {
@@ -64,7 +60,11 @@ export default function EditCMSPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchPage();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
