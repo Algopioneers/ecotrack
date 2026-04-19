@@ -24,6 +24,9 @@ export default function ChatBot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const voiceEnabledRef = useRef(voiceEnabled);
+
+  voiceEnabledRef.current = voiceEnabled;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -79,15 +82,14 @@ export default function ChatBot() {
         setMessages([welcomeMsg]);
         setSessionId(data.sessionId);
         
-        // Speak welcome message if voice enabled
-        if (voiceEnabled) {
+        if (voiceEnabledRef.current) {
           speak(data.message);
         }
       }
     } catch (error) {
       console.error('Failed to start conversation:', error);
     }
-  }, [voiceEnabled]);
+  }, []);
 
   const toggleVoice = () => {
     setVoiceEnabled(!voiceEnabled);
@@ -100,9 +102,8 @@ export default function ChatBot() {
     }
   };
 
-  const speak = (text: string) => {
-    if ('speechSynthesis' in window && voiceEnabled) {
-      // Cancel any ongoing speech
+  const speak = useCallback((text: string) => {
+    if ('speechSynthesis' in window && voiceEnabledRef.current) {
       window.speechSynthesis.cancel();
       
       const utterance = new SpeechSynthesisUtterance(text);
@@ -117,14 +118,14 @@ export default function ChatBot() {
       synthRef.current = utterance;
       window.speechSynthesis.speak(utterance);
     }
-  };
+  }, []);
 
-  const stopSpeaking = () => {
+  const stopSpeaking = useCallback(() => {
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       setIsSpeaking(false);
     }
-  };
+  }, []);
 
   const sendMessage = useCallback(async (textToSend?: string) => {
     const messageText = textToSend || input.trim();
@@ -166,7 +167,7 @@ export default function ChatBot() {
         setMessages(prev => [...prev, botMsg]);
         
         // Speak bot response if voice enabled
-        if (voiceEnabled) {
+        if (voiceEnabledRef.current) {
           speak(data.botMessage.content);
         }
         
@@ -185,7 +186,7 @@ export default function ChatBot() {
     } finally {
       setIsTyping(false);
     }
-  }, [input, isTyping, sessionId, voiceEnabled]);
+  }, [input, isTyping, sessionId]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

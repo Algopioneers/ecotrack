@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 interface SiteSettings {
   siteName: string;
@@ -259,7 +260,7 @@ export default function AdminSiteSettings() {
               {settings?.logo && (
                 <div className="border rounded-xl p-4">
                   <p className="text-sm font-medium text-gray-700 mb-3">Logo Preview</p>
-                  <img src={settings.logo} alt="Logo preview" className="h-12" />
+                  <Image src={settings.logo} alt="Logo preview" width={48} height={48} className="h-12 w-auto" />
                 </div>
               )}
             </div>

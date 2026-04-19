@@ -21,7 +21,7 @@ export default function UserPickups() {
 
   useEffect(() => {
     fetchPickups();
-  }, [filter]);
+  }, []);
 
   const fetchPickups = useCallback(async () => {
     const token = localStorage.getItem('token');

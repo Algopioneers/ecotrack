@@ -30,9 +30,9 @@ router.post('/register', async (req: Request, res: Response) => {
       where: { email }
     });
 
-    if (existingUser) {
-      return res.status(400).json({ error: 'User already exists with this email' });
-    }
+    // if (existingUser) {
+    //   return res.status(400).json({ error: 'User already exists with this email' });
+    // }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
